@@ -111,10 +111,18 @@ def home():
 @app.route('/webhook', methods=['POST'])
 def webhook():
     """Handle incoming updates from Telegram."""
-    if request.method == "POST":
-        update = Update.de_json(request.get_json(force=True), application.bot)
-        application.update_queue.put_nowait(update)
-        return "OK", 200
+    try:
+        if request.method == "POST":
+            # Log the incoming payload
+            payload = request.get_json(force=True)
+            logger.info(f"Incoming Webhook Payload: {payload}")
+            
+            update = Update.de_json(payload, application.bot)
+            application.update_queue.put_nowait(update)
+            return "OK", 200
+    except Exception as e:
+        logger.error(f"Exception in /webhook: {e}", exc_info=True)
+        return "Internal Server Error", 500
 
 def main():
     # Load Telegram bot token from environment variables
