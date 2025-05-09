@@ -1,3 +1,5 @@
-python-telegram-bot==20.6
-gspread
-oauth2client
+python-telegram-bot==20.6  # Telegram bot framework
+gspread                   # Google Sheets API library
+oauth2client              # Google OAuth for API authentication
+Flask                     # Web framework for webhook handling
+gunicorn                  # WSGI HTTP server for running Flask in production
