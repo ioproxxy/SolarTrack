@@ -1,5 +1,6 @@
 import os
 import logging
+import json
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 import gspread
@@ -23,10 +24,15 @@ def init_gspread():
         "https://spreadsheets.google.com/feeds",
         "https://www.googleapis.com/auth/drive"
     ]
-    # Load credentials from the service account JSON file
-    creds = ServiceAccountCredentials.from_json_keyfile_name(
-        "google_sheets_credentials.json", scope
-    )
+
+    # Load credentials from the GOOGLE_CRED_JSON environment variable
+    google_cred_json = os.getenv("GOOGLE_CRED_JSON")
+    if not google_cred_json:
+        raise ValueError("The GOOGLE_CRED_JSON environment variable is required.")
+
+    # Parse the JSON credentials from the environment variable
+    creds_dict = json.loads(google_cred_json)
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     return gspread.authorize(creds)
 
 # Command: /start
@@ -92,7 +98,7 @@ def webhook():
     return "OK", 200
 
 def main():
-    # Load Telegram bot token
+    # Load Telegram bot token from environment variables
     TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
     if not TOKEN:
         raise ValueError("The TELEGRAM_BOT_TOKEN environment variable is required.")
