@@ -1,9 +1,10 @@
 import os
 import logging
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+from flask import Flask, request
 
 # Enable logging
 logging.basicConfig(
@@ -11,6 +12,9 @@ logging.basicConfig(
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+
+# Initialize Flask app
+app = Flask(__name__)
 
 # Initialize gspread with Google Sheets API
 def init_gspread():
@@ -26,14 +30,14 @@ def init_gspread():
     return gspread.authorize(creds)
 
 # Command: /start
-def start(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text(
+async def start(update: Update, context):
+    await update.message.reply_text(
         "Welcome to the Google Sheets Bot! Use /help to see available commands."
     )
 
 # Command: /help
-def help_command(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text(
+async def help_command(update: Update, context):
+    await update.message.reply_text(
         "Available commands:\n"
         "/add <data> - Add a new row to the Google Sheet (comma-separated values).\n"
         "/get <row_number> - Retrieve data from a specific row.\n"
@@ -41,32 +45,32 @@ def help_command(update: Update, context: CallbackContext) -> None:
     )
 
 # Command: /add
-def add_row(update: Update, context: CallbackContext) -> None:
+async def add_row(update: Update, context):
     try:
         # Extract the data from the user message
         data = ' '.join(context.args).split(',')
         gc = init_gspread()
         sheet = gc.open("Your Google Sheet Name").sheet1  # Replace with your sheet name
         sheet.append_row(data)
-        update.message.reply_text("Row added successfully!")
+        await update.message.reply_text("Row added successfully!")
     except Exception as e:
         logger.error(f"Error adding row: {e}")
-        update.message.reply_text("Failed to add row. Please try again.")
+        await update.message.reply_text("Failed to add row. Please try again.")
 
 # Command: /get
-def get_row(update: Update, context: CallbackContext) -> None:
+async def get_row(update: Update, context):
     try:
         row_number = int(context.args[0])
         gc = init_gspread()
         sheet = gc.open("Your Google Sheet Name").sheet1  # Replace with your sheet name
         row = sheet.row_values(row_number)
-        update.message.reply_text(f"Row {row_number}: {', '.join(row)}")
+        await update.message.reply_text(f"Row {row_number}: {', '.join(row)}")
     except Exception as e:
         logger.error(f"Error retrieving row: {e}")
-        update.message.reply_text("Failed to retrieve row. Please provide a valid row number.")
+        await update.message.reply_text("Failed to retrieve row. Please provide a valid row number.")
 
 # Command: /update
-def update_row(update: Update, context: CallbackContext) -> None:
+async def update_row(update: Update, context):
     try:
         row_number = int(context.args[0])
         new_data = ' '.join(context.args[1:]).split(',')
@@ -74,34 +78,42 @@ def update_row(update: Update, context: CallbackContext) -> None:
         sheet = gc.open("Your Google Sheet Name").sheet1  # Replace with your sheet name
         sheet.delete_row(row_number)
         sheet.insert_row(new_data, row_number)
-        update.message.reply_text(f"Row {row_number} updated successfully!")
+        await update.message.reply_text(f"Row {row_number} updated successfully!")
     except Exception as e:
         logger.error(f"Error updating row: {e}")
-        update.message.reply_text("Failed to update row. Please provide valid inputs.")
+        await update.message.reply_text("Failed to update row. Please provide valid inputs.")
+
+# Flask route to handle Telegram webhook
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    """Process updates from Telegram"""
+    update = Update.de_json(request.get_json(force=True), bot)
+    application.update_queue.put_nowait(update)
+    return "OK", 200
 
 def main():
-    # Load the Telegram bot token from environment variables
+    # Load Telegram bot token
     TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
     if not TOKEN:
         raise ValueError("The TELEGRAM_BOT_TOKEN environment variable is required.")
 
-    # Create the Updater and pass it your bot's token
-    updater = Updater(TOKEN)
+    # Set up the Telegram bot application
+    global application  # Make application accessible in the webhook route
+    application = Application.builder().token(TOKEN).build()
 
-    # Get the dispatcher to register handlers
-    dispatcher = updater.dispatcher
+    # Add handlers to the bot
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("add", add_row))
+    application.add_handler(CommandHandler("get", get_row))
+    application.add_handler(CommandHandler("update", update_row))
 
-    # Register command handlers
-    dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("help", help_command))
-    dispatcher.add_handler(CommandHandler("add", add_row))
-    dispatcher.add_handler(CommandHandler("get", get_row))
-    dispatcher.add_handler(CommandHandler("update", update_row))
+    # Set webhook for Telegram updates
+    webhook_url = "https://solartrak-bot.onrender.com/webhook"
+    application.bot.set_webhook(webhook_url)
 
-    # Start the Bot
-    updater.start_polling()
-    updater.idle()
+    # Run Flask app
+    app.run(port=5000)
 
 if __name__ == '__main__':
-
     main()
