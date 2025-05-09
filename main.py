@@ -103,12 +103,18 @@ async def update_row(update: Update, context):
         await update.message.reply_text("Failed to update row. Please provide valid inputs.")
 
 # Flask route to handle Telegram webhook
+@app.route('/', methods=['GET'])
+def home():
+    """Handle requests to the root URL."""
+    return "SolarTrack Bot is running!", 200
+
 @app.route('/webhook', methods=['POST'])
 def webhook():
-    """Process updates from Telegram"""
-    update = Update.de_json(request.get_json(force=True), bot)
-    application.update_queue.put_nowait(update)
-    return "OK", 200
+    """Handle incoming updates from Telegram."""
+    if request.method == "POST":
+        update = Update.de_json(request.get_json(force=True), application.bot)
+        application.update_queue.put_nowait(update)
+        return "OK", 200
 
 def main():
     # Load Telegram bot token from environment variables
