@@ -1,6 +1,7 @@
 import os
 import logging
 import json
+import random
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 import gspread
@@ -35,11 +36,23 @@ def init_gspread():
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     return gspread.authorize(creds)
 
-# Command: /start
+# Enhanced /start command with multiple responses
 async def start(update: Update, context):
-    await update.message.reply_text(
-        "Welcome to the Google Sheets Bot! Use /help to see available commands."
-    )
+    responses = [
+        "Welcome to the SolarTrack Bot! 🌞 Use /help to see how I can assist you.",
+        "Hello there! Ready to track your solar data? Type /help to get started.",
+        "Hi! I'm your SolarTrack assistant. Use /help to explore what I can do for you!",
+        "Greetings! 🌍 Need help with solar data? Type /help to learn more.",
+        "Hey! I'm here to make solar tracking easier for you. Type /help to begin.",
+        "Welcome aboard! 🚀 Use /help to see how I can help with your solar data.",
+        "Hello, Earthling! 🌎 Ready to harness the power of the sun? Type /help to start.",
+        "Hi there! ☀️ I'm here to help with your solar tracking needs. Use /help for guidance.",
+        "Welcome to SolarTrack! 🔆 Curious about what I can do? Type /help to find out.",
+        "Good day! 🌟 I'm your solar assistant. Use /help to unlock my potential."
+    ]
+    # Select a random response
+    response = random.choice(responses)
+    await update.message.reply_text(response)
 
 # Command: /help
 async def help_command(update: Update, context):
