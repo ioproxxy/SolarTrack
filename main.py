@@ -22,8 +22,7 @@ client = gspread.authorize(creds)
 # Open your Google Sheet
 sheet = client.open("OrderTracking").sheet1  # Change to your sheet name
 
-# Telegram bot token
-TOKEN = "7502921143:AAERohIB8KQKWOeng8MebHTQgO4aN31rIuk"
+# Telegram bot Token
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Welcome to SolarBot! Send /track <order_id> to track your order.")
